@@ -30,3 +30,9 @@ Python: Predefined port is 514 (default port for syslog). Edit the script if you
 ```
 python3 syslogreceiver.py
 ```
+## TODO
+
+- Add more rules
+- Write a blog post about Get-WinEvent powershell cmdlet
+- Process the receiver results to html or csv
+- Get more familiar with powershell
