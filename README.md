@@ -17,7 +17,7 @@ Some additional rules also included which I found important. Might add some more
 
 2.) Pass the syslog endpoint ip as parameter - example: 
 ```
-.\evtxscanner.ps1 -ip 192.168.1.1
+.\evtscanner.ps1 -ip 192.168.1.1
 ```
 
 3.) OPTIONAL - If you don't have a syslog endpoint/receiver you can use these really simple receivers provided in this repo
