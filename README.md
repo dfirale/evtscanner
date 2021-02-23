@@ -13,7 +13,7 @@ Some additional rules also included which I found important. Might add some more
 
 ## USAGE
 
-1.) Powershell needs to be run with elevated privileges (admin/system). Deploy through GPO or run with PsExec etc. 
+1.) Powershell needs to be run with elevated privileges (admin/system). Deploy the script through GPO or run with PsExec etc. 
 
 2.) Pass the syslog endpoint ip as parameter - example: 
 ```
@@ -26,7 +26,7 @@ Powershell: Specify parameters port and file
 ```
 .\syslogreceiver.ps1 -port 514 -file C:\Users\Johndoe\Desktop\events.txt
 ```
-Python: Edit the script if you wish to change the logfile. Default is events.log in the current directory
+Python: Predefined port is 514 (default port for syslog). Edit the script if you wish to change the logfile. Default is events.log in the current directory. 
 ```
 python3 syslogreceiver.py
 ```
