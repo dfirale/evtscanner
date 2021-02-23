@@ -1,7 +1,7 @@
 # Writes data received from $port to $file
 # Default syslog port = 514
 # usage:
-# ./sysloglistener.ps1 -port 514 -file C:\Users\user01\Desktop\syslog.txt
+# .\sysloglistener.ps1 -port 514 -file C:\Users\user01\Desktop\syslog.txt
 
 param (
     $port,
