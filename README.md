@@ -6,6 +6,8 @@ All conditions included from Florian Roth's Godmode Sigma rule: https://github.c
 
 Some additional rules also included which I found important. Might add some more later!
 
+More detailed explanation in this blog post: https://dfirale.github.io/dfir/2021/03/01/Finding-evil-with-Powershell-and-Get-WinEvent.html
+
 ## REQUIREMENTS
 
 - (Recommended) Sysmon installed
