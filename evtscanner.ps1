@@ -1,61 +1,86 @@
-param (
-    $ip
- )
+param ([Parameter(Mandatory=$true)]$ip)
 
 # Get current timestamp when the log was analyzed
-$getdate = Get-Date -UFormat "%Y %b %d %R:%S"
+$getdate   = Get-Date -UFormat "%Y %b %d %R:%S"
 $timestamp = $getdate.replace(".",":")
 
-# Syslog parameters. 
+# Syslog parameters 
 $UdpClient = New-Object System.Net.Sockets.UdpClient
-$adr = $ip
-$Port = "514"
+$adr       = $ip
+$Port      = "514"
 
-# Predefine Syslog-function
-Function Send-Syslog ($msg) {
+# Syslog + message function
+Function Send-Syslog {
+    param(
+        [Parameter()][string]$Parameter1,
+        [Parameter()][string]$Parameter2,
+        [Parameter()][string]$Parameter3,
+        [Parameter()][string]$Parameter4,
+        [Parameter()][string]$Parameter5,
+        [Parameter()][string]$Parameter6,
+        [Parameter()][string]$Parameter7
+    )
+
+    # The actual message format with parameters
+    $msg       = "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
     $bytearray = $([System.Text.Encoding])::ASCII.GetBytes($msg)
     $UdpClient.Connect($adr,$Port)
     $UdpClient.Send($bytearray, $bytearray.length) | out-null
 }
 
-#  ____                                                 ____                          __             
-# /\  _`\                                              /\  _`\                       /\ \__          
-# \ \ \L\ \_ __   ___     ___     __    ____    ____   \ \ \/\_\  _ __    __     __  \ \ ,_\    __   
-#  \ \ ,__/\`'__\/ __`\  /'___\ /'__`\ /',__\  /',__\   \ \ \/_/_/\`'__\/'__`\ /'__`\ \ \ \/  /'__`\ 
-#   \ \ \/\ \ \//\ \L\ \/\ \__//\  __//\__, `\/\__, `\   \ \ \L\ \ \ \//\  __//\ \L\.\_\ \ \_/\  __/ 
-#    \ \_\ \ \_\\ \____/\ \____\ \____\/\____/\/\____/    \ \____/\ \_\\ \____\ \__/.\_\\ \__\ \____\
-#     \/_/  \/_/ \/___/  \/____/\/____/\/___/  \/___/      \/___/  \/_/ \/____/\/__/\/_/ \/__/\/____/
-#                                                                                                   
-#       Sysmon event id 1 / Windows process creation 4688
+# Parameters for Send-Syslog function. Needed for messages
+$Parameters = @{
+    Parameter1 = $time
+    Parameter2 = $channel
+    Parameter3 = $id
+    Parameter4 = $provider
+    Parameter5 = $computer
+    Parameter6 = $message
+    Parameter7 = $timestamp
+}
+
+#  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# |                                                                           |
+# - Process create events - Sysmon event id 1 / Windows process creation 4688 -
+# |                                                                           |
+#  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Different suspicious or malicious command line parameters
-# https://github.com/Neo23x0/sigma/blob/master/other/godmode_sigma_rule.yml
-
 $CommandLine = @( 
-    ' -NoP ',  # Often used in malicious PowerShell commands 
-    ' -W Hidden ',  # Often used in malicious PowerShell commands
-    ' -decode ',  # Used with certutil
-    ' /decode ',  # Used with certutil 
-    ' -e(?s).*JAB',  # PowerShell encoded commands
-    ' -e(?s).*SUVYI',  # PowerShell encoded commands
-    ' -e(?s).*SQBFAFgA',  # PowerShell encoded commands
-    ' -e(?s).*aWV4I',  # PowerShell encoded commands
-    ' -e(?s).*IAB',  # PowerShell encoded commands
-    ' -e(?s).*PAA',  # PowerShell encoded commands
-    ' -e(?s).*aQBlAHgA',  # PowerShell encoded commands
-    'vssadmin delete shadows',  # Ransomware
-    'reg SAVE HKLM\\SAM',  # save registry SAM - syskey extraction
-    ' -ma ',  # ProcDump
-    'Microsoft\\Windows\\CurrentVersion\\Run',  # Run key in command line - often in combination with REG ADD
-    '.downloadstring\(',  # PowerShell download command
-    '.downloadfile\(',  # PowerShell download command
-    ' /ticket:',  # Rubeus
-    ' sekurlsa',  # Mimikatz
-    ' p::d',  # Mimikatz 
-    ';iex\(',  # PowerShell IEX
-    'schtasks(?s).*/create(?s).*AppData',  # Scheduled task creation pointing to AppData
-    ' comsvcs.dll,MiniDump',  # Process dumping method apart from procdump
-    ' comsvcs.dll,#24'  # Process dumping method apart from procdump
+    ' -NoP ',                                      # Often used in malicious PowerShell commands 
+    ' -W Hidden ',                                 # Often used in malicious PowerShell commands
+    ' -decode ',                                   # Used with certutil
+    ' /decode ',                                   # Used with certutil 
+    ' -e(?s).*JAB',                                # PowerShell encoded commands
+    ' -e(?s).*SUVYI',                              # PowerShell encoded commands
+    ' -e(?s).*SQBFAFgA',                           # PowerShell encoded commands
+    ' -e(?s).*aWV4I',                              # PowerShell encoded commands
+    ' -e(?s).*IAB',                                # PowerShell encoded commands
+    ' -e(?s).*PAA',                                # PowerShell encoded commands
+    ' -e(?s).*aQBlAHgA',                           # PowerShell encoded commands
+    'vssadmin delete shadows',                     # Ransomware
+    'reg SAVE HKLM\\SAM',                          # save registry SAM - syskey extraction
+    ' -ma ',                                       # ProcDump
+    'Microsoft\\Windows\\CurrentVersion\\Run',     # Run key in command line - often in combination with REG ADD
+    '.downloadstring\(',                           # PowerShell download command
+    '.downloadfile\(',                             # PowerShell download command
+    ' /ticket:',                                   # Rubeus
+    ' sekurlsa',                                   # Mimikatz
+    ' p::d',                                       # Mimikatz 
+    ';iex\(',                                      # PowerShell IEX
+    'schtasks(?s).*/create(?s).*AppData',          # Scheduled task creation pointing to AppData
+    ' comsvcs.dll,MiniDump',                       # Process dumping method apart from procdump
+    ' comsvcs.dll,#24',                            # Process dumping method apart from procdump
+    'Add-MpPreference(?s).*ExclusionPath',         # Defender exclusion
+    'Add-MpPreference(?s).*ExclusionExtension',    # Defender exclusion
+    'Add-MpPreference(?s).*ExclusionProcess',      # Defender exclusion
+    'DisableBehaviorMonitoring $true',             # Defender disable
+    'DisableRunTimeMonitoring $true',              # Defender disable
+    'sc(?s).*stop(?s).*WinDefend',                 # Defender disable
+    'sc(?s).*config(?s).*WinDefend(?s).*disabled', # Defender disable
+    'FromBase64String\(',                          # Suspicious FromBase64String expressions
+    'cmd.exe /Q /c(?s).*\\\\127.0.0.1\\',          # wmiexec.py https://github.com/SecureAuthCorp/impacket/blob/master/examples/wmiexec.py#L287
+    'cmd.exe /C(?s).*\\\\Temp\\'                   # atexec.py  https://github.com/SecureAuthCorp/impacket/blob/master/examples/atexec.py#L122
 )
 
 # Office Dropper Detection
@@ -100,38 +125,36 @@ $WCommandLine = @(
     'ping -n ',
     'systeminfo',
     '&cd&echo',
-    'cd /d '  # https://www.computerhope.com/cdhlp.htm
+    'cd /d '      # https://www.computerhope.com/cdhlp.htm
 )
-
-# Whoami executed as system. Array is not needed for this.
 
 # Sysmon process create event id 1
 Get-WinEvent -FilterHashtable @{ LogName='Microsoft-Windows-Sysmon/Operational'; Id='1'} | Foreach-Object {
-    $entry = [xml]$_.ToXml()
-    $provider = $entry.Event.System.Provider.Name
-    $id = $entry.Event.System.EventID
-    $time = $entry.Event.System.TimeCreated.SystemTime
-    $channel = $entry.Event.System.Channel
-    $computer = $entry.Event.System.Computer
-    $message = $_."Message" -replace "\r\n"," " -replace "\s"," "
-    $xmlcmdline = $entry.SelectSingleNode("//*[@Name='CommandLine']")."#text"
+    $entry            = [xml]$_.ToXml()
+    $provider         = $entry.Event.System.Provider.Name
+    $id               = $entry.Event.System.EventID
+    $time             = $entry.Event.System.TimeCreated.SystemTime
+    $channel          = $entry.Event.System.Channel
+    $computer         = $entry.Event.System.Computer
+    $message          = $_."Message" -replace "\r\n"," " -replace "\s"," "
+    $xmlcmdline       = $entry.SelectSingleNode("//*[@Name='CommandLine']")."#text"
     $xmlparentcmdline = $entry.SelectSingleNode("//*[@Name='ParentCommandLine']")."#text"
-    $xmlparentimage = $entry.SelectSingleNode("//*[@Name='ParentImage']")."#text"
-    $xmlimage = $entry.SelectSingleNode("//*[@Name='Image']")."#text"
-    $xmluser = $entry.SelectSingleNode("//*[@Name='User']")."#text"
+    $xmlparentimage   = $entry.SelectSingleNode("//*[@Name='ParentImage']")."#text"
+    $xmlimage         = $entry.SelectSingleNode("//*[@Name='Image']")."#text"
+    $xmluser          = $entry.SelectSingleNode("//*[@Name='User']")."#text"
         
         # Different suspicious or malicious command line parameters
         foreach ($c in $commandline) {
             if ($xmlcmdline -match ($c) -or $xmlparentcmdline -match ($c)) {            
-                Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                Send-Syslog @Parameters
             }
         }
         
-        # Office Dropper Detection
+        # Office dropper detection
         foreach ($p in $ParentImage) {
             foreach ($i in $image) {
                 if($xmlparentimage -match ($p) -and $xmlimage -match ($i)) {
-                    Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                    Send-Syslog @Parameters
                 }
             }
         }
@@ -140,43 +163,43 @@ Get-WinEvent -FilterHashtable @{ LogName='Microsoft-Windows-Sysmon/Operational';
         foreach ($w in $wimage) {
             foreach ($wc in $wcommandline) {
                 if ($xmlimage -match ($w) -and $xmlcmdline -match ($wc)) {
-                    Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                    Send-Syslog @Parameters
                 }
             }
         }
 
         # Whoami as System
         if($xmluser -match 'AUTHORITY\\SYSTEM' -and $xmlimage -match '\\whoami.exe') {
-            Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+            Send-Syslog @Parameters
         }
 }
 
 # Windows process creation event id 4688
 Get-WinEvent -FilterHashtable @{ LogName='Security'; Id='4688'} | Foreach-Object {
-    $entry = [xml]$_.ToXml()
-    $provider = $entry.Event.System.Provider.Name
-    $id = $entry.Event.System.EventID
-    $time = $entry.Event.System.TimeCreated.SystemTime
-    $channel = $entry.Event.System.Channel
-    $computer = $entry.Event.System.Computer
-    $message = $_."Message" -replace "\r\n"," " -replace "\s"," "
-    $xmlcmdline = $entry.SelectSingleNode("//*[@Name='CommandLine']")."#text"
+    $entry =          [xml]$_.ToXml()
+    $provider =       $entry.Event.System.Provider.Name
+    $id =             $entry.Event.System.EventID
+    $time =           $entry.Event.System.TimeCreated.SystemTime
+    $channel =        $entry.Event.System.Channel
+    $computer =       $entry.Event.System.Computer
+    $message =        $_."Message" -replace "\r\n"," " -replace "\s"," "
+    $xmlcmdline =     $entry.SelectSingleNode("//*[@Name='CommandLine']")."#text"
     $xmlparentimage = $entry.SelectSingleNode("//*[@Name='ParentProcessName']")."#text"
-    $xmlimage = $entry.SelectSingleNode("//*[@Name='NewProcessName']")."#text"
-    $xmluser = $entry.SelectSingleNode("//*[@Name='SubjectUserSid']")."#text"
+    $xmlimage =       $entry.SelectSingleNode("//*[@Name='NewProcessName']")."#text"
+    $xmluser =        $entry.SelectSingleNode("//*[@Name='SubjectUserSid']")."#text"
 
         # Different suspicious or malicious command line parameters
         foreach ($c in $commandline) {
             if ($xmlcmdline -match ($c)) {            
-                Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                Send-Syslog @Parameters
             }
         }
         
-        # Office Dropper Detection
+        # Office dropper detection
         foreach ($p in $ParentImage) {
             foreach ($i in $image) {
                 if($xmlparentimage -match ($p) -and $xmlimage -match ($i)) {
-                    Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                    Send-Syslog @Parameters
                 }
             }
         }
@@ -185,69 +208,59 @@ Get-WinEvent -FilterHashtable @{ LogName='Security'; Id='4688'} | Foreach-Object
         foreach ($w in $wimage) {
             foreach ($wc in $wcommandline) {
                 if ($xmlimage -match ($w) -and $xmlcmdline -match ($wc)) {
-                    Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                    Send-Syslog @Parameters
                 }
             }
         }
 
         # Whoami as System
         if($xmluser -eq 'S-1-5-18' -and $xmlimage -match '\\whoami.exe') {
-            Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+            Send-Syslog @Parameters
         }
 }
 
-#  ____         ___               ____                          __              __     
-# /\  _`\   __ /\_ \             /\  _`\                       /\ \__          /\ \    
-# \ \ \L\_\/\_\\//\ \      __    \ \ \/\_\  _ __    __     __  \ \ ,_\    __   \_\ \   
-#  \ \  _\/\/\ \ \ \ \   /'__`\   \ \ \/_/_/\`'__\/'__`\ /'__`\ \ \ \/  /'__`\ /'_` \  
-#   \ \ \/  \ \ \ \_\ \_/\  __/    \ \ \L\ \ \ \//\  __//\ \L\.\_\ \ \_/\  __//\ \L\ \ 
-#    \ \_\   \ \_\/\____\ \____\    \ \____/\ \_\\ \____\ \__/.\_\\ \__\ \____\ \___,_\
-#     \/_/    \/_/\/____/\/____/     \/___/  \/_/ \/____/\/__/\/_/ \/__/\/____/\/__,_ /
-#
-#       Sysmon file create event 11
+#  - - - - - - - - - - - - - - -
+# |                             |
+# - Sysmon file create event 11 -
+# |                             |
+#  - - - - - - - - - - - - - - -
 
 $TargetFile = @(
-    '.dmp',  # dump process memory
-    'Desktop\\how',  # Ransomware
-    'Desktop\\decrypt',  # Ransomware
-    'bloodhound.bin' # By default bloodhound drops this file to disk if not disabled by cmdline
+    '.dmp',             # Dump process memory
+    'Desktop\\how',     # Ransomware
+    'Desktop\\decrypt', # Ransomware
+    'bloodhound.bin'    # By default Bloodhound drops this file to disk
 )
 
 Get-WinEvent -FilterHashtable @{ LogName='Microsoft-Windows-Sysmon/Operational'; Id='11'} | Foreach-Object {
-    $entry = [xml]$_.ToXml()
-    $provider = $entry.Event.System.Provider.Name
-    $id = $entry.Event.System.EventID
-    $time = $entry.Event.System.TimeCreated.SystemTime
-    $channel = $entry.Event.System.Channel
-    $computer = $entry.Event.System.Computer
-    $message = $_."Message" -replace "\r\n"," " -replace "\s"," "
+    $entry =          [xml]$_.ToXml()
+    $provider =       $entry.Event.System.Provider.Name
+    $id =             $entry.Event.System.EventID
+    $time =           $entry.Event.System.TimeCreated.SystemTime
+    $channel =        $entry.Event.System.Channel
+    $computer =       $entry.Event.System.Computer
+    $message =        $_."Message" -replace "\r\n"," " -replace "\s"," "
     $xmltarfilename = $entry.SelectSingleNode("//*[@Name='TargetFilename']")."#text"
 
         # Targetfile
         foreach ($t in $TargetFile) {
             if ($xmltarfilename -match ($t)) {
-                Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                Send-Syslog @Parameters
             }
         }
 }
 
-#  ____                                __                       ____                           __      
-# /\  _`\                  __         /\ \__                   /\  _`\                        /\ \__   
-# \ \ \L\ \     __     __ /\_\    ____\ \ ,_\  _ __   __  __   \ \ \L\_\  __  __     __    ___\ \ ,_\  
-#  \ \ ,  /   /'__`\ /'_ `\/\ \  /',__\\ \ \/ /\`'__\/\ \/\ \   \ \  _\L /\ \/\ \  /'__`\/' _ `\ \ \/  
-#   \ \ \\ \ /\  __//\ \L\ \ \ \/\__, `\\ \ \_\ \ \/ \ \ \_\ \   \ \ \L\ \ \ \_/ |/\  __//\ \/\ \ \ \_ 
-#    \ \_\ \_\ \____\ \____ \ \_\/\____/ \ \__\\ \_\  \/`____ \   \ \____/\ \___/ \ \____\ \_\ \_\ \__\
-#     \/_/\/ /\/____/\/___L\ \/_/\/___/   \/__/ \/_/   `/___/> \   \/___/  \/__/   \/____/\/_/\/_/\/__/
-#                      /\____/                            /\___/                                       
-#                      \_/__/                             \/__/                                        
-#
-#        Sysmon registry events 12 and 13
+#  - - - - - - - - - - - - - - - - - -
+# |                                   |
+# - Sysmon registry events 12 and 13  -
+# |                                   |
+#  - - - - - - - - - - - - - - - - - -
 
 $TargetObject = @(
-    'UserInitMprLogonScript',  # persistence
-    '\\CurrentVersion\\Image File Execution Options\\',  # persistence
-    '\\Microsoft\\Windows\\CurrentVersion\\Run\\',  # persistence
-    '\\Microsoft\\Windows\\CurrentVersion\\RunOnce\\'   # persistence
+    'UserInitMprLogonScript',                           # Persistence
+    '\\CurrentVersion\\Image File Execution Options\\', # Persistence
+    '\\Microsoft\\Windows\\CurrentVersion\\Run\\',      # Persistence
+    '\\Microsoft\\Windows\\CurrentVersion\\RunOnce\\'   # Persistence
 )
 
 $Details = @(
@@ -260,99 +273,147 @@ $Details = @(
 )
 
 Get-WinEvent -FilterHashtable @{ LogName='Microsoft-Windows-Sysmon/Operational'; Id=12,13} | Foreach-Object {
-    $entry = [xml]$_.ToXml()
-    $provider = $entry.Event.System.Provider.Name
-    $id = $entry.Event.System.EventID
-    $time = $entry.Event.System.TimeCreated.SystemTime
-    $channel = $entry.Event.System.Channel
-    $computer = $entry.Event.System.Computer
-    $message = $_."Message" -replace "\r\n"," " -replace "\s"," "
+    $entry =        [xml]$_.ToXml()
+    $provider =     $entry.Event.System.Provider.Name
+    $id =           $entry.Event.System.EventID
+    $time =         $entry.Event.System.TimeCreated.SystemTime
+    $channel =      $entry.Event.System.Channel
+    $computer =     $entry.Event.System.Computer
+    $message =      $_."Message" -replace "\r\n"," " -replace "\s"," "
     $xmltarobject = $entry.SelectSingleNode("//*[@Name='TargetObject']")."#text"
-    $xmldetails = $entry.SelectSingleNode("//*[@Name='Details']")."#text"
+    $xmldetails =   $entry.SelectSingleNode("//*[@Name='Details']")."#text"
 
         # TargetObject
         foreach ($to in $targetobject) {
             if ($xmltarobject -match ($to)) {
-                Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                Send-Syslog @Parameters
             }
         }
 
         # Details
         foreach ($d in $details) {
             if ($xmldetails -match ($d)) {
-                Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                Send-Syslog @Parameters
             }
         }
 }
 
-#    _____            __                    _______    __           __      
-#   / ___/__  _______/ /____  ____ ___     / ____/ |  / /__  ____  / /______
-#   \__ \/ / / / ___/ __/ _ \/ __ `__ \   / __/  | | / / _ \/ __ \/ __/ ___/
-#  ___/ / /_/ (__  ) /_/  __/ / / / / /  / /___  | |/ /  __/ / / / /_(__  ) 
-# /____/\__, /____/\__/\___/_/ /_/ /_/  /_____/  |___/\___/_/ /_/\__/____/  
-#      /____/                                                               
-#        
-#        Malicious service installs
+#  - - - - - - - - - - - - - - - 
+# |                             |
+# - Sysmon Named Pipe events 17 -
+# |                             |
+#  - - - - - - - - - - - - - - - 
+
+$PipeNames = @(
+    'postex',                               # Cobalt Strike Pipe Name                     
+    'status_',                              # Cobalt Strike Pipe Name
+    'msagent_',                             # Cobalt Strike Pipe Name
+    'lsadump',                              # Password or Credential Dumpers
+    'cachedump',                            # Password or Credential Dumpers
+    'wceservicepipe',                       # Password or Credential Dumpers
+    'isapi',                                # Malware named pipes
+    'sdlrpc',                               # Malware named pipes
+    'ahexec',                               # Malware named pipes
+    'winsession',                           # Malware named pipes
+    'lsassw',                               # Malware named pipes
+    '46a676ab7f179e511e30dd2dc41bd388',     # Malware named pipes
+    '9f81f59bc58452127884ce513865ed20',     # Malware named pipes
+    'e710f28d59aa529d6792ca6ff0ca1b34',     # Malware named pipes
+    'rpchlp_3',                             # Malware named pipes
+    'NamePipe_MoreWindows',                 # Malware named pipes
+    'pcheap_reuse',                         # Malware named pipes
+    'gruntsvc',                             # Malware named pipes
+    '583da945-62af-10e8-4902-a8f205c72b2e', # Malware named pipes
+    'bizkaz',                               # Malware named pipes
+    'svcctl',                               # Malware named pipes
+    'Posh',                                 # Malware named pipes
+    'jaccdpqnvbrrxlaf',                     # Malware named pipes
+    'csexecsvc',                            # Malware named pipes
+    'paexec',                               # Remote Command Execution Tools
+    'remcom',                               # Remote Command Execution Tools
+    'csexec'                                # Remote Command Execution Tools
+)
+
+Get-WinEvent -FilterHashtable @{ LogName='Microsoft-Windows-Sysmon/Operational'; Id=17} | Foreach-Object {
+    $entry =        [xml]$_.ToXml()
+    $provider =     $entry.Event.System.Provider.Name
+    $id =           $entry.Event.System.EventID
+    $time =         $entry.Event.System.TimeCreated.SystemTime
+    $channel =      $entry.Event.System.Channel
+    $computer =     $entry.Event.System.Computer
+    $message =      $_."Message" -replace "\r\n"," " -replace "\s"," "
+    $xmlpipename =  $entry.SelectSingleNode("//*[@Name='PipeName']")."#text"
+
+        foreach ($p in $PipeNames) {
+            if ($xmlpipename -match ($p)) {
+                Send-Syslog @Parameters
+            }
+        }  
+}
+
+#  - - - - - - - - - - - - - - - - - - - - - - - - - -
+# |                                                   |
+# - System events (7045) - Malicious service installs -
+# |                                                   |
+#  - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 $ServiceName = @(
-    'WCESERVICE',
-    'WCE SERVICE',
-    'winexesvc',
-    'DumpSvc',
-    'pwdump',
-    'gsecdump',
-    'cachedump'
+    'WCESERVICE',  # PW Dumping         https://attack.mitre.org/software/S0005/
+    'WCE SERVICE', # PW Dumping         https://attack.mitre.org/software/S0005/
+    'winexesvc',   # PsExec alternative https://attack.mitre.org/software/S0191/
+    'DumpSvc',     # PW Dumping
+    'pwdump',      # PW Dumping         https://attack.mitre.org/software/S0006/
+    'gsecdump',    # PW Dumping         https://attack.mitre.org/software/S0008/
+    'cachedump'    # PW Dumping         https://attack.mitre.org/software/S0119/
 )
 
 $ServiceFilename = @(
-    '\\\\.\\pipe', # Possible get-system usage. Named pipe service - https://blog.cobaltstrike.com/2014/04/02/what-happens-when-i-type-getsystem/
-    '\\\\127.0.0.1\\' # Detects smbexec from Impacket framework - https://neil-fox.github.io/Impacket-usage-&-detection/
+    '\\\\.\\pipe',    # Possible get-system usage. Named pipe service - https://blog.cobaltstrike.com/2014/04/02/what-happens-when-i-type-getsystem/
+    '\\\\127.0.0.1\\' # Detects smbexec from Impacket framework       - https://neil-fox.github.io/Impacket-usage-&-detection/
 )
 
 Get-WinEvent -FilterHashtable @{ LogName='System'; Id='7045'} | Foreach-Object {
-    $entry = [xml]$_.ToXml()
-    $provider = $entry.Event.System.Provider.Name
-    $id = $entry.Event.System.EventID.Qualifiers
-    $time = $entry.Event.System.TimeCreated.SystemTime
-    $channel = $entry.Event.System.Channel
-    $computer = $entry.Event.System.Computer
-    $message = $_."Message" -replace "\r\n"," " -replace "\s"," "
-    $xmlservicename = $entry.SelectSingleNode("//*[@Name='ServiceName']")."#text"
+    $entry =              [xml]$_.ToXml()
+    $provider =           $entry.Event.System.Provider.Name
+    $id =                 $entry.Event.System.EventID.Qualifiers
+    $time =               $entry.Event.System.TimeCreated.SystemTime
+    $channel =            $entry.Event.System.Channel
+    $computer =           $entry.Event.System.Computer
+    $message =            $_."Message" -replace "\r\n"," " -replace "\s"," "
+    $xmlservicename =     $entry.SelectSingleNode("//*[@Name='ServiceName']")."#text"
     $xmlserviceFilename = $entry.SelectSingleNode("//*[@Name='ImagePath']")."#text"
 
         foreach ($s in $ServiceName) {
             if ($xmlservicename -match ($s)) {
-                Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                Send-Syslog @Parameters
             }
         }
 
         foreach ($sf in $ServiceFilename) {
             if ($xmlservicefilename -match ($sf)) {
-                Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+                Send-Syslog @Parameters
             }
         }
 }
 
-#  __          __ _             _         __                  _ 
-#  \ \        / /(_)           | |       / _|                | |
-#   \ \  /\  / /  _  _ __    __| |  ___ | |_  ___  _ __    __| |
-#    \ \/  \/ /  | || '_ \  / _` | / _ \|  _|/ _ \| '_ \  / _` |
-#     \  /\  /   | || | | || (_| ||  __/| | |  __/| | | || (_| |
-#      \/  \/    |_||_| |_| \__,_| \___||_|  \___||_| |_| \__,_|
-#
-# Windows Defender event id 1116 and 1117
+#  - - - - - - - - - - - - - - - - - - - - -
+# |                                         |
+# - Windows Defender event id 1116 and 1117 -
+# |                                         |
+#  - - - - - - - - - - - - - - - - - - - - -
+
 # 1116 Windows Defender Antivirus has detected malware or other potentially unwanted software
 # 1117 Windows Defender Antivirus has taken action to protect this machine from malware or other potentially unwanted software.
 
 Get-WinEvent -FilterHashtable @{ LogName='Microsoft-Windows-Windows Defender/Operational'; Id=1116,1117} | Foreach-Object {
-    $entry = [xml]$_.ToXml()
-    $provider = $entry.Event.System.Provider.Name
-    $id = $entry.Event.System.EventID.Qualifiers
-    $time = $entry.Event.System.TimeCreated.SystemTime
-    $channel = $entry.Event.System.Channel
-    $computer = $entry.Event.System.Computer
-    $message = $_."Message" -replace "\r\n"," " -replace "\s"," "
+    $entry =          [xml]$_.ToXml()
+    $provider =       $entry.Event.System.Provider.Name
+    $id =             $entry.Event.System.EventID.Qualifiers
+    $time =           $entry.Event.System.TimeCreated.SystemTime
+    $channel =        $entry.Event.System.Channel
+    $computer =       $entry.Event.System.Computer
+    $message =        $_."Message" -replace "\r\n"," " -replace "\s"," "
     $xmlservicename = $entry.SelectSingleNode("//*[@Name='ServiceName']")."#text"
     
-    Send-Syslog "$time WinEvtLog: $channel`: EVENT-ID($id)`: $provider`: COMPUTER: $computer`: $message CollectTime: $timestamp"
+    Send-Syslog @Parameters
 }
