@@ -4,13 +4,16 @@ Powershell script to scan Windows eventlog with Sigma rules and send the results
 
 All conditions included from Florian Roth's Godmode Sigma rule: https://github.com/Neo23x0/sigma/blob/master/other/godmode_sigma_rule.yml
 
-Some additional rules also included which I found important. Might add some more later!
+Some additional rules also included which I found relevant.
 
 More detailed explanation in this blog post: https://dfirale.github.io/dfir/2021/03/01/Finding-evil-with-Powershell-and-Get-WinEvent.html
+
+![stats](https://user-images.githubusercontent.com/24719957/136694077-36518a0a-d26b-47fb-a1ad-c41233ccd0f6.png)
 
 ## REQUIREMENTS
 
 - (Recommended) Sysmon installed
+
 - (Optional) Commandline auditing on Windows process create events
 
 ## USAGE
@@ -32,9 +35,18 @@ Python: Predefined port is 514 (default port for syslog). Edit the script if you
 ```
 python3 syslogreceiver.py
 ```
+
+## Updates
+
+### 2021-10-10 
+- Commandline indicators on process create events
+- Sysmon Pipe event (17) indicators (malware, Cobalt Strike, PWdumpers, RCE)
+- Couple system event (7045) indicators
+- Shorten and beautify code
+
 ## TODO
 
 - Add more rules
-- Write a blog post about Get-WinEvent powershell cmdlet
+- Function to scan .evtx files exported from another host
+- Function to generate html or csv results locally 
 - Process the receiver results to html or csv
-- Get more familiar with powershell
