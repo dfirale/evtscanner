@@ -1,11 +1,11 @@
 # Writes data received from $port to $file
 # Default syslog port = 514
 # usage:
-# .\sysloglistener.ps1 -port 514 -file C:\Users\user01\Desktop\syslog.txt
+# .\syslogreceiver.ps1 -port 514 -file C:\Users\user01\Desktop\syslog.txt
 
 param (
-    $port,
-    $file
+    [Parameter(Mandatory=$true)]$port,
+    [Parameter(Mandatory=$true)]$file
 )
 
 $endpoint = New-Object System.Net.IPEndPoint ([IPAddress]::Any, $port)
